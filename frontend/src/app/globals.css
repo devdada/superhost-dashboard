@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #f1f5f9;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .sh-page {
+    @apply min-h-screen bg-gradient-to-b from-slate-100 to-slate-200;
+    @apply dark:from-slate-950 dark:to-slate-900;
+  }
+
+  .sh-header {
+    @apply border-b border-slate-200 bg-white/80 backdrop-blur;
+    @apply dark:border-slate-800 dark:bg-slate-950/80;
+  }
+
+  .sh-card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply dark:border-slate-700 dark:bg-slate-900;
+  }
+
+  .sh-card-muted {
+    @apply rounded-xl border border-slate-200 bg-slate-50;
+    @apply dark:border-slate-700 dark:bg-slate-800/50;
+  }
+
+  .sh-heading {
+    @apply text-slate-900 dark:text-slate-100;
+  }
+
+  .sh-subtext {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+
+  .sh-label {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+}
