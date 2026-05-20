@@ -1,0 +1,45 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Dashboard → New → Blueprint → connect this repo.
+#
+# Notes:
+# - API disk requires a paid instance (Starter+). SQLite lives on the mounted volume.
+# - Set both services to the same region.
+# - After first deploy, upload or copy superhost.db into the API disk if migrating local data.
+
+services:
+  - type: web
+    name: superhost-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: superhost-web
+          envVarKey: RENDER_EXTERNAL_URL
+    disk:
+      name: superhost-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  - type: web
+    name: superhost-web
+    runtime: node
+    rootDir: frontend
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: superhost-api
+          envVarKey: RENDER_EXTERNAL_URL
