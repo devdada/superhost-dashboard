@@ -105,7 +105,7 @@ export function CommandCenterView() {
             dimmed={customActive}
           />
           <span className="hidden h-5 w-px bg-slate-300 dark:bg-slate-700 sm:block" aria-hidden />
-          <span className="sh-label text-[10px]">Calendar</span>
+          <span className="sh-label text-[10px]">Date range</span>
           <ReportDatePicker
             value={customDates}
             availableDates={reportDates}
@@ -149,7 +149,7 @@ export function CommandCenterView() {
 
       {propertyFilter.mode === "subset" && propertyFilter.enabled.size === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-          Select at least one property to view the command center.
+          Select at least one property to view analytics.
         </p>
       )}
 

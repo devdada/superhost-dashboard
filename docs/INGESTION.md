@@ -10,7 +10,7 @@ Postmark / SendGrid / Mailgun
         → POST https://api.your-app.com/inbound-email  (FastAPI)
         → email_processor → pdf_ingestion_service → metrics_engine (parser)
         → SQLite + archived PDFs in backend/data/pdfs/
-        → dashboard revision bump → Command Center auto-refresh (30s poll)
+        → dashboard revision bump → Analytics auto-refresh (30s poll)
 ```
 
 ## Modular backend packages

@@ -14,7 +14,7 @@ export function PropertyLayout({ hotelName, children }: Props) {
         <div className="mx-auto max-w-6xl px-6 py-4">
           <nav className="mb-3 flex flex-wrap items-center gap-2 text-sm sh-label">
             <Link href="/" className="hover:text-indigo-600 dark:hover:text-indigo-400">
-              Command Center
+              Analytics
             </Link>
             <span>/</span>
             <span>Properties</span>
@@ -33,7 +33,7 @@ export function PropertyLayout({ hotelName, children }: Props) {
                 href="/"
                 className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
-                ← Command Center
+                ← Analytics
               </Link>
               <DarkModeToggle />
             </div>

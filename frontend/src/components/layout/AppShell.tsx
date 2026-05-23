@@ -9,7 +9,7 @@ type Props = {
 };
 
 const NAV = [
-  { href: "/", label: "Command Center" },
+  { href: "/", label: "Analytics" },
   { href: "/reports", label: "Reports" },
   { href: "/admin/ingestion", label: "Ingestion" },
 ];
@@ -24,7 +24,7 @@ export function AppShell({ title, subtitle, children }: Props) {
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
                 Superhost
               </span>
-              <span className="text-sm font-semibold sh-heading">Operations Command</span>
+              <span className="text-sm font-semibold sh-heading">Dashboard</span>
             </Link>
             <nav className="hidden items-center gap-1 sm:flex">
               {NAV.map((item) => (

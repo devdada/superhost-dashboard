@@ -1,4 +1,4 @@
-"""Executive command center dashboard aggregation."""
+"""Executive analytics dashboard aggregation."""
 
 from __future__ import annotations
 

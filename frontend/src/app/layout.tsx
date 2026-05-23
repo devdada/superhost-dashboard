@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Superhost Command Center",
+  title: "Superhost Analytics",
   description: "Executive operational intelligence for hotel ownership groups",
 };
 

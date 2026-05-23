@@ -72,7 +72,7 @@ Open [http://localhost:3000](http://localhost:3000) · API docs: `http://localho
 
 Deploy **both** frontend and backend on [Render](https://render.com) with SQLite on a persistent disk. See **[DEPLOY.md](./DEPLOY.md)** and [`render.yaml`](./render.yaml) (Blueprint).
 
-## Dashboard (Command Center)
+## Analytics
 
 Executive operations UI at `/` — KPI header, Action Intelligence alerts, hotel heatmap, trend charts, top/worst performers. Upload PDFs at `/reports`.
 

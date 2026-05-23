@@ -124,7 +124,7 @@ export async function fetchCommandCenter(
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error("Failed to load command center");
+    throw new Error("Failed to load analytics");
   }
   return response.json();
 }

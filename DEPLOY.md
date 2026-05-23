@@ -107,9 +107,25 @@ base64 -d superhost.b64 > superhost.db
 
 Skip migration; upload PDFs again through the dashboard.
 
+## Keep data across deploys (upload via UI)
+
+1. **superhost-api** must have a **persistent disk** mounted at  
+   `/opt/render/project/src/backend/data` (Starter+ plan).
+2. Upload Daily Flash PDFs on production **`/reports`** (they write to `backend/data/superhost.db` on that disk).
+3. After every deploy, confirm persistence:
+   ```bash
+   curl -s https://YOUR-API.onrender.com/health
+   ```
+   Expect `"reports": <N>` with `N > 0` and `"data_dir": "/opt/render/project/src/backend/data"`.
+4. **Restart** the API once (not “delete disk”). Run `curl /health` again — `reports` should be unchanged.
+5. **Do not** scale the API past **1 instance** (SQLite is single-writer).
+6. **Do not** delete or recreate the disk unless you intend to wipe data.
+
+Redeploying code is safe when the disk mount is correct; only the disk volume holds your DB across deploys.
+
 ## Verify
 
-- API: `https://superhost-api.onrender.com/health` → `{"status":"ok"}`
+- API: `https://superhost-api.onrender.com/health` → `{"status":"ok","reports":N,"data_dir":"..."}`
 - API docs: `https://superhost-api.onrender.com/docs`
 - App: open the **web** service URL, upload a PDF, confirm portfolio data loads.
 
