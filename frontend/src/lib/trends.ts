@@ -1,3 +1,6 @@
+import type { DashboardFilters } from "@/lib/dashboard-filters";
+import { buildFilterQuery } from "@/lib/dashboard-filters";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type PortfolioVariancePoint = {
@@ -40,6 +43,10 @@ export type TrendMover = {
 
 export type HistoricalTrends = {
   total_reports: number;
+  period: string;
+  range_start: string | null;
+  range_end: string | null;
+  metric: string;
   portfolio_variance_trend: PortfolioVariancePoint[];
   top_performers: HotelRanking[];
   worst_performers: HotelRanking[];
@@ -49,12 +56,15 @@ export type HistoricalTrends = {
   declining_properties: TrendMover[];
 };
 
-export async function fetchHistoricalTrends(): Promise<HistoricalTrends> {
+export async function fetchHistoricalTrends(
+  filters: DashboardFilters,
+): Promise<HistoricalTrends> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
+  const qs = buildFilterQuery(filters);
 
   try {
-    const response = await fetch(`${API_BASE}/trends`, {
+    const response = await fetch(`${API_BASE}/trends?${qs}`, {
       cache: "no-store",
       signal: controller.signal,
     });

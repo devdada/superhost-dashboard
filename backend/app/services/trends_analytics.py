@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy.orm import Session
 
-from app.database import Report
+from app.query_filters import normalize_metric, normalize_period, resolve_period_range
 from app.repositories.report_repository import (
-    count_unique_report_dates,
-    list_reports_deduped_by_date,
+    count_reports_in_period,
+    filter_metrics_by_name,
+    list_reports_in_period,
 )
 from app.schemas.trends import (
     HistoricalTrendsResponse,
@@ -56,13 +58,27 @@ def _is_strictly_declining(values: list[float]) -> bool:
     )
 
 
-def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
-    reports = list_reports_deduped_by_date(session)
-    total_reports = count_unique_report_dates(session)
+def build_historical_trends(
+    session: Session,
+    *,
+    metric: str | None = None,
+    period: str | None = None,
+    reference: date | None = None,
+) -> HistoricalTrendsResponse:
+    metric_name = normalize_metric(metric)
+    period_name = normalize_period(period)
+    range_start, range_end = resolve_period_range(period_name, reference=reference)
+
+    reports = list_reports_in_period(session, period_name, reference=reference)
+    total_reports = count_reports_in_period(session, period_name, reference=reference)
 
     if total_reports == 0:
         return HistoricalTrendsResponse(
             total_reports=0,
+            period=period_name,
+            range_start=range_start,
+            range_end=range_end,
+            metric=metric_name,
             portfolio_variance_trend=[],
             top_performers=[],
             worst_performers=[],
@@ -77,10 +93,11 @@ def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
     hotel_variance_lists: dict[str, list[float]] = defaultdict(list)
 
     for report in reports:
-        if not report.metrics:
+        metric_rows = filter_metrics_by_name(report.metrics, metric_name)
+        if not metric_rows:
             continue
 
-        avg_variance = sum(m.variance_percent for m in report.metrics) / len(report.metrics)
+        avg_variance = sum(m.variance_percent for m in metric_rows) / len(metric_rows)
         date_str = report.report_date.isoformat()
 
         portfolio_trend.append(
@@ -92,11 +109,11 @@ def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
             )
         )
 
-        for metric in report.metrics:
-            hotel_history[metric.hotel_name].append(
-                _HotelPoint(report_date=date_str, variance_percent=metric.variance_percent)
+        for row in metric_rows:
+            hotel_history[row.hotel_name].append(
+                _HotelPoint(report_date=date_str, variance_percent=row.variance_percent)
             )
-            hotel_variance_lists[metric.hotel_name].append(metric.variance_percent)
+            hotel_variance_lists[row.hotel_name].append(row.variance_percent)
 
     rankings: list[HotelRanking] = []
     for hotel_name, variances in hotel_variance_lists.items():
@@ -122,7 +139,8 @@ def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
                     hotel_name=hotel_name,
                     consecutive_misses=streak,
                     message=(
-                        f"{hotel_name} missed budget in {streak} consecutive {plural}."
+                        f"{hotel_name} missed budget on {metric_name} "
+                        f"in {streak} consecutive {plural}."
                     ),
                 )
             )
@@ -148,7 +166,7 @@ def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
                     latest_variance_percent=last_v,
                     change_points=change,
                     message=(
-                        f"{hotel_name} is improving — variance rose "
+                        f"{hotel_name} is improving on {metric_name} — variance rose "
                         f"{first_v:.1f}% to {last_v:.1f}% over the last {TREND_WINDOW} reports."
                     ),
                 )
@@ -162,7 +180,7 @@ def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
                     latest_variance_percent=last_v,
                     change_points=change,
                     message=(
-                        f"{hotel_name} is declining — variance fell "
+                        f"{hotel_name} is declining on {metric_name} — variance fell "
                         f"{first_v:.1f}% to {last_v:.1f}% over the last {TREND_WINDOW} reports."
                     ),
                 )
@@ -192,6 +210,10 @@ def build_historical_trends(session: Session) -> HistoricalTrendsResponse:
 
     return HistoricalTrendsResponse(
         total_reports=total_reports,
+        period=period_name,
+        range_start=range_start,
+        range_end=range_end,
+        metric=metric_name,
         portfolio_variance_trend=portfolio_trend,
         top_performers=top_performers,
         worst_performers=worst_performers,

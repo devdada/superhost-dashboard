@@ -3,13 +3,24 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f1f5f9;
+  --background: #f8fafc;
   --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --border: #e2e8f0;
+  --accent: #4f46e5;
+  --critical: #dc2626;
+  --watch: #d97706;
+  --strong: #059669;
 }
 
 .dark {
-  --background: #020617;
+  --background: #030712;
   --foreground: #f1f5f9;
+  --surface: #0f172a;
+  --surface-elevated: #1e293b;
+  --border: #334155;
+  --accent: #818cf8;
   color-scheme: dark;
 }
 
@@ -23,32 +34,39 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 @layer components {
   .sh-page {
-    @apply min-h-screen bg-gradient-to-b from-slate-100 to-slate-200;
-    @apply dark:from-slate-950 dark:to-slate-900;
+    @apply min-h-screen;
+    background: var(--background);
   }
 
   .sh-header {
-    @apply border-b border-slate-200 bg-white/80 backdrop-blur;
-    @apply dark:border-slate-800 dark:bg-slate-950/80;
+    @apply sticky top-0 z-50 border-b backdrop-blur-xl;
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+  }
+
+  .sh-shell {
+    @apply mx-auto w-full max-w-[1440px] px-6 py-8 lg:px-10;
   }
 
   .sh-card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
-    @apply dark:border-slate-700 dark:bg-slate-900;
+    @apply rounded-2xl border shadow-sm transition-shadow duration-300;
+    border-color: var(--border);
+    background: var(--surface);
   }
 
-  .sh-card-muted {
-    @apply rounded-xl border border-slate-200 bg-slate-50;
-    @apply dark:border-slate-700 dark:bg-slate-800/50;
+  .sh-card-elevated {
+    @apply rounded-2xl border shadow-md;
+    border-color: var(--border);
+    background: var(--surface-elevated);
   }
 
   .sh-heading {
-    @apply text-slate-900 dark:text-slate-100;
+    @apply text-slate-900 dark:text-slate-50;
   }
 
   .sh-subtext {
@@ -56,6 +74,40 @@ body {
   }
 
   .sh-label {
-    @apply text-slate-500 dark:text-slate-400;
+    @apply text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400;
+  }
+
+  .sh-kpi-value {
+    @apply text-2xl font-semibold tracking-tight tabular-nums;
+  }
+
+  .sh-terminal-panel {
+    @apply rounded-xl border shadow-sm;
+    border-color: var(--border);
+    background: var(--surface);
+  }
+
+  .sh-section-title {
+    @apply text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50;
+  }
+
+  .sh-animate-in {
+    animation: sh-fade-in 0.45s ease-out both;
+  }
+
+  .sh-stagger-1 { animation-delay: 0.05s; }
+  .sh-stagger-2 { animation-delay: 0.1s; }
+  .sh-stagger-3 { animation-delay: 0.15s; }
+  .sh-stagger-4 { animation-delay: 0.2s; }
+}
+
+@keyframes sh-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

@@ -12,8 +12,12 @@ from sqlalchemy.orm import Session
 
 from app.config import UPLOAD_DIR
 from app.models import FlashMetricRow
-from app.parser import extract_flash_table
-from app.repositories.report_repository import create_report_with_metrics, report_date_exists
+from app.parser import extract_flash_report
+from app.repositories.report_repository import (
+    create_report_with_metrics,
+    delete_reports_for_date,
+    report_date_exists,
+)
 from app.schemas.upload import (
     BatchUploadResponse,
     FailedUploadItem,
@@ -53,22 +57,31 @@ def ingest_pdf_file(
     temp_path: Path,
     filename: str,
     seen_dates: set[date],
+    replace_existing: bool = False,
 ) -> _IngestSuccess | _IngestSkipped:
-    metric, report_date, rows = extract_flash_table(temp_path)
+    report_date, rows = extract_flash_report(temp_path)
+    metrics = sorted({row.metric for row in rows})
+    metric = ", ".join(metrics) if metrics else "Revenue"
 
-    if report_date in seen_dates:
+    if report_date in seen_dates and not replace_existing:
         return _IngestSkipped(
             filename=filename,
             report_date=report_date,
             reason="Duplicate report date in this upload batch",
         )
 
-    if report_date_exists(session, report_date):
-        return _IngestSkipped(
-            filename=filename,
-            report_date=report_date,
-            reason="Report date already exists in database",
-        )
+    if report_date in seen_dates and replace_existing:
+        delete_reports_for_date(session, report_date)
+        seen_dates.discard(report_date)
+    elif report_date_exists(session, report_date):
+        if replace_existing:
+            delete_reports_for_date(session, report_date)
+        else:
+            return _IngestSkipped(
+                filename=filename,
+                report_date=report_date,
+                reason="Report date already exists in database — enable Replace to re-import all metrics",
+            )
 
     report = create_report_with_metrics(
         session,
@@ -91,6 +104,8 @@ async def process_upload_file(
     session: Session,
     file: UploadFile,
     seen_dates: set[date],
+    *,
+    replace_existing: bool = False,
 ) -> UploadResultItem | SkippedDuplicateItem:
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise ValueError("Only PDF files are supported")
@@ -102,6 +117,7 @@ async def process_upload_file(
             temp_path=temp_path,
             filename=file.filename,
             seen_dates=seen_dates,
+            replace_existing=replace_existing,
         )
         if isinstance(result, _IngestSkipped):
             return SkippedDuplicateItem(
@@ -124,6 +140,8 @@ async def process_upload_file(
 async def process_batch_upload(
     session: Session,
     files: list[UploadFile],
+    *,
+    replace_existing: bool = False,
 ) -> BatchUploadResponse:
     imported: list[UploadResultItem] = []
     skipped: list[SkippedDuplicateItem] = []
@@ -132,7 +150,9 @@ async def process_batch_upload(
 
     for file in files:
         try:
-            outcome = await process_upload_file(session, file, seen_dates)
+            outcome = await process_upload_file(
+                session, file, seen_dates, replace_existing=replace_existing
+            )
             if isinstance(outcome, SkippedDuplicateItem):
                 skipped.append(outcome)
             else:

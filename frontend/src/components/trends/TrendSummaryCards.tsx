@@ -25,7 +25,7 @@ export function TrendSummaryCards({ trends }: Props) {
     {
       label: "Reports Uploaded",
       value: String(trends.total_reports),
-      sub: "Unique report dates (duplicates excluded)",
+      sub: "Report dates in selected timeline",
       accent: "border-l-indigo-500",
     },
     {
@@ -33,7 +33,11 @@ export function TrendSummaryCards({ trends }: Props) {
       value: latest
         ? `${latest.average_variance_percent >= 0 ? "+" : ""}${latest.average_variance_percent.toFixed(1)}%`
         : "—",
-      sub: latest ? formatShortDate(latest.report_date) : "Upload a report",
+      sub: latest
+        ? formatShortDate(latest.report_date)
+        : trends.total_reports > 0
+          ? `No ${trends.metric} rows in range`
+          : "No reports in range",
       accent: "border-l-violet-500",
     },
     {
@@ -45,7 +49,12 @@ export function TrendSummaryCards({ trends }: Props) {
     {
       label: "Trend vs Prior Report",
       value: delta === null ? "—" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pts`,
-      sub: delta === null ? "Needs 2+ reports" : "Portfolio avg variance change",
+      sub:
+        delta === null
+          ? trends.total_reports < 2
+            ? "Needs 2+ reports with this metric"
+            : `No ${trends.metric} trend points`
+          : "Portfolio avg variance change",
       accent: delta !== null && delta >= 0 ? "border-l-emerald-500" : "border-l-amber-500",
     },
   ];

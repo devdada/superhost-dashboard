@@ -1,4 +1,4 @@
-# Superhost Command Center (Local MVP)
+# Superhost Dashboard (Local MVP)
 
 Monorepo for ingesting Superhost **Daily Flash** PDF reports, persisting historical metrics in SQLite, and surfacing operational + trend intelligence.
 
@@ -72,12 +72,24 @@ Open [http://localhost:3000](http://localhost:3000) · API docs: `http://localho
 
 Deploy **both** frontend and backend on [Render](https://render.com) with SQLite on a persistent disk. See **[DEPLOY.md](./DEPLOY.md)** and [`render.yaml`](./render.yaml) (Blueprint).
 
+## Dashboard (Command Center)
+
+Executive operations UI at `/` — KPI header, Action Intelligence alerts, hotel heatmap, trend charts, top/worst performers. Upload PDFs at `/reports`.
+
+API: `GET /dashboard/command-center?period=7d|30d|mtd|ytd|all`
+
+### Inbound email ingestion
+
+Forward daily PDFs to `reports@yourdomain.com` (Postmark/SendGrid/Mailgun → `POST /api/inbound-email`). Admin panel: `/admin/ingestion`. Details: [docs/INGESTION.md](docs/INGESTION.md).
+
 ## Features
 
 ### Single-report (after upload)
+- **Multi-metric ingestion** — each Daily Flash PDF parses pages 1–5: Revenue, Room Revenue, Occupancy, ADR, RevPAR (~85 rows per file for 17 hotels)
 - Portfolio summary cards
 - Critical / watch / strong insights (rule-based)
 - Detail table with row highlighting
+- **Dashboard filters** — segmented timeline (7D, 30D, MTD, YTD, All). Ranges end on the latest report day (prior calendar day).
 
 ### Executive action intelligence
 - **Portfolio Executive Summary** — health score (0–100), biggest risk, top performer, emerging concern

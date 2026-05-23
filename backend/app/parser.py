@@ -1,4 +1,4 @@
-"""Extract the first Daily Flash table from a Superhost portfolio PDF."""
+"""Extract Daily Flash tables from a Superhost portfolio PDF."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ PTD_VARIANCE_PCT_COL = 13
 
 DATA_START_ROW = 4
 SKIP_NAMES = frozenset({"total", "superhost hospitality"})
+MAX_INGEST_PAGES = 6
 
 
 def _parse_number(value: str | None) -> float | None:
@@ -37,19 +38,29 @@ def _parse_number(value: str | None) -> float | None:
 def _metric_from_title(title_cell: str | None) -> str:
     if not title_cell:
         return "Revenue"
+    text = str(title_cell).upper()
     match = re.search(
         r"-\s*Superhost Portfolio \(Current\)\s*-\s*(.+)$",
-        title_cell,
+        str(title_cell),
         re.IGNORECASE,
     )
-    if match:
-        label = match.group(1).strip()
-        if "REVENUE" in label.upper():
-            return "Revenue"
-        if "OCCUPANCY" in label.upper():
-            return "Occupancy"
-        return label.title()
-    if "revenue" in title_cell.lower():
+    label = match.group(1).strip().upper() if match else text
+
+    if "OPERATING REVENUE" in label or (
+        "REVENUE" in label and "ROOM" not in label and "F&B" not in label
+    ):
+        return "Revenue"
+    if "ROOMS REVENUE" in label or "ROOM REVENUE" in label:
+        return "Room Revenue"
+    if "OCCUPANCY" in label:
+        return "Occupancy"
+    if "REV PAR" in label or "REVPAR" in label:
+        return "RevPAR"
+    if "TOTAL F&B" in label and "EMBASSY" not in label:
+        return "F&B"
+    if re.search(r"\bADR\b", label):
+        return "ADR"
+    if "revenue" in str(title_cell).lower():
         return "Revenue"
     return "Revenue"
 
@@ -78,21 +89,7 @@ def _parse_report_date(table: list[list]) -> date:
     return date.today()
 
 
-def extract_flash_table(pdf_path: Path) -> tuple[str, date, list[FlashMetricRow]]:
-    with pdfplumber.open(pdf_path) as pdf:
-        if not pdf.pages:
-            raise ValueError("PDF has no pages")
-
-        tables = pdf.pages[0].extract_tables()
-        if not tables:
-            raise ValueError("No table found on the first page of the PDF")
-
-        table = tables[0]
-
-    title_cell = table[0][1] if len(table[0]) > 1 else None
-    metric = _metric_from_title(title_cell)
-    report_date = _parse_report_date(table)
-
+def _extract_rows_from_table(table: list[list], metric: str) -> list[FlashMetricRow]:
     rows: list[FlashMetricRow] = []
     for raw in table[DATA_START_ROW:]:
         if not _is_hotel_row(raw):
@@ -117,8 +114,42 @@ def extract_flash_table(pdf_path: Path) -> tuple[str, date, list[FlashMetricRow]
                 variance_percent=variance_pct,
             )
         )
+    return rows
 
-    if not rows:
+
+def extract_flash_report(pdf_path: Path) -> tuple[date, list[FlashMetricRow]]:
+    """Parse pages 1–6: Revenue, Room Revenue, Occupancy, ADR, RevPAR, F&B."""
+    all_rows: list[FlashMetricRow] = []
+    report_date: date | None = None
+
+    with pdfplumber.open(pdf_path) as pdf:
+        if not pdf.pages:
+            raise ValueError("PDF has no pages")
+
+        page_count = min(MAX_INGEST_PAGES, len(pdf.pages))
+        for page_idx in range(page_count):
+            tables = pdf.pages[page_idx].extract_tables()
+            if not tables or not tables[0]:
+                continue
+
+            table = tables[0]
+            title_cell = table[0][1] if len(table[0]) > 1 else None
+            metric = _metric_from_title(title_cell)
+
+            if report_date is None:
+                report_date = _parse_report_date(table)
+
+            all_rows.extend(_extract_rows_from_table(table, metric))
+
+    if not all_rows:
         raise ValueError("Could not parse any hotel rows from the PDF table")
 
-    return metric, report_date, rows
+    return report_date or date.today(), all_rows
+
+
+def extract_flash_table(pdf_path: Path) -> tuple[str, date, list[FlashMetricRow]]:
+    """Backward-compatible wrapper returning primary metric label."""
+    report_date, rows = extract_flash_report(pdf_path)
+    metrics = sorted({row.metric for row in rows})
+    primary = metrics[0] if metrics else "Revenue"
+    return primary, report_date, rows

@@ -31,6 +31,7 @@ export function UploadPanel({ onUploadSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<BatchUploadResponse | null>(null);
   const [latestResult, setLatestResult] = useState<UploadResponse | null>(null);
+  const [replaceExisting, setReplaceExisting] = useState(false);
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -50,7 +51,9 @@ export function UploadPanel({ onUploadSuccess }: Props) {
     setError(null);
 
     try {
-      const response = await uploadDailyFlashBatch(selectedFiles);
+      const response = await uploadDailyFlashBatch(selectedFiles, {
+        replaceExisting,
+      });
       setBatchResult(response);
 
       if (response.imported.length > 0) {
@@ -94,9 +97,23 @@ export function UploadPanel({ onUploadSuccess }: Props) {
         </p>
         <h2 className="text-lg font-semibold sh-heading">Upload Daily Flash PDFs</h2>
         <p className="mt-1 text-sm sh-subtext">
-          Select one or more portfolio rollups. Duplicate report dates are skipped automatically
-          (same date in the database or within this batch).
+          Each PDF ingests five metrics (Revenue, Room Revenue, Occupancy, ADR, RevPAR). By default,
+          duplicate report dates are skipped.
         </p>
+
+        <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm sh-subtext">
+          <input
+            type="checkbox"
+            checked={replaceExisting}
+            onChange={(e) => setReplaceExisting(e.target.checked)}
+            className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span>
+            <strong className="sh-heading">Replace existing dates</strong> — re-import PDFs that
+            share a report date already in the database (use after upgrading ingestion to load
+            Occupancy and other metrics).
+          </span>
+        </label>
 
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
           <input

@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -41,6 +43,10 @@ class TrendMover(BaseModel):
 
 class HistoricalTrendsResponse(BaseModel):
     total_reports: int
+    period: str
+    range_start: date | None
+    range_end: date | None
+    metric: str
     portfolio_variance_trend: list[PortfolioVariancePoint]
     top_performers: list[HotelRanking]
     worst_performers: list[HotelRanking]

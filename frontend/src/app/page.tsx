@@ -1,14 +1,13 @@
-import { CommandCenter } from "@/components/CommandCenter";
-import { AppHeader } from "@/components/layout/AppHeader";
+import { CommandCenterView } from "@/components/command-center/CommandCenterView";
+import { AppShell } from "@/components/layout/AppShell";
 
 export default function Home() {
   return (
-    <div className="sh-page">
-      <AppHeader title="Command Center" />
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <CommandCenter />
-      </main>
-    </div>
+    <AppShell
+      title="Command Center"
+      subtitle="AI-powered operational intelligence for hospitality ownership — prioritize action, detect anomalies, and move faster."
+    >
+      <CommandCenterView />
+    </AppShell>
   );
 }
-

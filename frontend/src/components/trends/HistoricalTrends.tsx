@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { formatPeriodRange, type DashboardFilters } from "@/lib/dashboard-filters";
 import { fetchHistoricalTrends, type HistoricalTrends } from "@/lib/trends";
 
 import { HotelRankings } from "./HotelRankings";
@@ -13,9 +14,10 @@ import { TrendSummaryCards } from "./TrendSummaryCards";
 
 type Props = {
   refreshKey?: number;
+  filters: DashboardFilters;
 };
 
-export function HistoricalTrendsSection({ refreshKey = 0 }: Props) {
+export function HistoricalTrendsSection({ refreshKey = 0, filters }: Props) {
   const [trends, setTrends] = useState<HistoricalTrends | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function HistoricalTrendsSection({ refreshKey = 0 }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchHistoricalTrends();
+      const data = await fetchHistoricalTrends(filters);
       setTrends(data);
     } catch (err) {
       setTrends(null);
@@ -32,7 +34,7 @@ export function HistoricalTrendsSection({ refreshKey = 0 }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     loadTrends();
@@ -46,8 +48,11 @@ export function HistoricalTrendsSection({ refreshKey = 0 }: Props) {
         </p>
         <h2 className="text-xl font-bold sh-heading">Historical Trends</h2>
         <p className="mt-1 text-sm sh-subtext">
-          Cross-report analysis stored in local SQLite — upload multiple Daily Flash files to
-          build trend lines and persistent risk detection.
+          {filters.metric} ·{" "}
+          {trends
+            ? formatPeriodRange(filters.period, trends.range_start, trends.range_end)
+            : formatPeriodRange(filters.period, null, null)}
+          . Trends use all reports in the selected range.
         </p>
       </div>
 

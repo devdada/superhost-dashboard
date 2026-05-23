@@ -57,13 +57,17 @@ export async function uploadDailyFlash(file: File): Promise<UploadResponse> {
   throw new Error("Upload failed");
 }
 
-export async function uploadDailyFlashBatch(files: File[]): Promise<BatchUploadResponse> {
+export async function uploadDailyFlashBatch(
+  files: File[],
+  options?: { replaceExisting?: boolean },
+): Promise<BatchUploadResponse> {
   const formData = new FormData();
   for (const file of files) {
     formData.append("files", file);
   }
 
-  const response = await fetch(`${API_BASE}/upload/batch`, {
+  const replace = options?.replaceExisting ? "true" : "false";
+  const response = await fetch(`${API_BASE}/upload/batch?replace_existing=${replace}`, {
     method: "POST",
     body: formData,
   });

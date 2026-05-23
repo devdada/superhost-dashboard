@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Superhost Command Center",
-  description: "Daily Flash PDF ingestion and portfolio dashboard",
+  description: "Executive operational intelligence for hotel ownership groups",
 };
 
 export default function RootLayout({
