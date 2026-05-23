@@ -153,6 +153,88 @@ def _hotel_increment(end_row, start_row) -> SimpleNamespace | None:
     return SimpleNamespace(forecast=delta_f, budget=delta_b, variance_percent=variance)
 
 
+def _daily_hotel_increment(
+    report,
+    prev_report,
+    hotel: str,
+    metric: str,
+) -> float | None:
+    if prev_report is None:
+        return None
+    end_row = _metrics_map(report).get(hotel, {}).get(metric)
+    if not end_row or not is_valid_metric_row(end_row):
+        return None
+    cur = end_row.forecast
+    if prev_report.report_date.month != report.report_date.month:
+        return cur
+    prev_row = _metrics_map(prev_report).get(hotel, {}).get(metric)
+    prev_val = prev_row.forecast if prev_row and is_valid_metric_row(prev_row) else 0.0
+    return cur - prev_val
+
+
+def _daily_hotel_budget_increment(
+    report,
+    prev_report,
+    hotel: str,
+    metric: str,
+) -> float | None:
+    if prev_report is None:
+        return None
+    end_row = _metrics_map(report).get(hotel, {}).get(metric)
+    if not end_row or not is_valid_metric_row(end_row):
+        return None
+    cur_b = end_row.budget
+    if prev_report.report_date.month != report.report_date.month:
+        return cur_b
+    prev_row = _metrics_map(prev_report).get(hotel, {}).get(metric)
+    prev_b = prev_row.budget if prev_row and is_valid_metric_row(prev_row) else 0.0
+    return cur_b - prev_b
+
+
+def _period_hotel_incremental(
+    reports: list,
+    baseline,
+    hotel: str,
+    metric: str,
+) -> SimpleNamespace | None:
+    """Sum daily PTD deltas per hotel (handles month resets; never end PTD − start PTD)."""
+    if not reports:
+        return None
+    if len(reports) == 1 and baseline is None:
+        row = _metrics_map(reports[0]).get(hotel, {}).get(metric)
+        if row and is_valid_metric_row(row):
+            return SimpleNamespace(
+                forecast=row.forecast,
+                budget=row.budget,
+                variance_percent=row.variance_percent,
+            )
+        return None
+
+    total_a = 0.0
+    total_b = 0.0
+    any_inc = False
+    prev = baseline
+    for report in reports:
+        inc_a = _daily_hotel_increment(report, prev, hotel, metric)
+        inc_b = _daily_hotel_budget_increment(report, prev, hotel, metric)
+        if inc_a is not None and inc_b is not None:
+            total_a += inc_a
+            total_b += inc_b
+            any_inc = True
+        prev = report
+    if not any_inc:
+        end_map = _metrics_map(reports[-1])
+        start_map = _metrics_map(baseline) if baseline else _metrics_map(reports[0])
+        end_row = end_map.get(hotel, {}).get(metric)
+        start_row = start_map.get(hotel, {}).get(metric)
+        return _hotel_increment(end_row, start_row) if end_row else None
+
+    variance = safe_incremental_variance(total_a, total_b)
+    if variance is None:
+        return None
+    return SimpleNamespace(forecast=total_a, budget=total_b, variance_percent=variance)
+
+
 def _hotel_period_average(rows: list) -> SimpleNamespace:
     return SimpleNamespace(
         forecast=mean(m.forecast for m in rows),
@@ -345,13 +427,6 @@ def _build_period_hotel_metrics(reports: list, baseline) -> dict[str, dict[str, 
     """Per-hotel metrics scoped to the timeline (incremental $, averaged levels)."""
     if not reports:
         return {}
-    end_map = _metrics_map(reports[-1])
-    if baseline is not None:
-        start_map = _metrics_map(baseline)
-    elif len(reports) > 1:
-        start_map = _metrics_map(reports[0])
-    else:
-        start_map = {}
 
     accum: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     for report in reports:
@@ -362,12 +437,9 @@ def _build_period_hotel_metrics(reports: list, baseline) -> dict[str, dict[str, 
     for hotel, by_metric in accum.items():
         for metric, rows in by_metric.items():
             if metric in INCREMENTAL_METRICS:
-                end_row = end_map.get(hotel, {}).get(metric)
-                if end_row:
-                    start_row = start_map.get(hotel, {}).get(metric)
-                    inc = _hotel_increment(end_row, start_row)
-                    if inc is not None:
-                        result[hotel][metric] = inc
+                inc = _period_hotel_incremental(reports, baseline, hotel, metric)
+                if inc is not None:
+                    result[hotel][metric] = inc
             else:
                 avg = _hotel_period_average(rows)
                 if is_valid_metric_row(avg):

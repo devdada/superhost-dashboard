@@ -93,7 +93,61 @@ export function PortfolioHeatmap({ rows }: { rows: HeatmapRow[] }) {
         <h2 className="text-base font-semibold tracking-tight sh-heading">Portfolio Command Grid</h2>
         <p className="text-[11px] sh-subtext">Sortable · heat-ranked · click hotel for drilldown</p>
       </div>
-      <div className="max-h-[420px] overflow-auto">
+
+      {/* Mobile: card list — page scroll only, no nested table scroll */}
+      <ul className="divide-y divide-slate-200/80 sm:hidden dark:divide-slate-800/80">
+        {sorted.map((row) => (
+          <li key={row.hotel_name} className={rowHeat(row.variance_vs_budget)}>
+            <Link
+              href={propertyPath(row.hotel_name)}
+              className="block px-3 py-2.5 active:bg-indigo-500/5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="min-w-0 flex-1 font-semibold leading-snug text-indigo-600 dark:text-indigo-400">
+                  {row.hotel_name}
+                </span>
+                <span className="shrink-0 text-sm font-semibold tabular-nums sh-heading">
+                  {row.revenue != null ? formatCurrency(row.revenue) : "—"}
+                </span>
+              </div>
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                <div className="flex justify-between gap-2">
+                  <dt className="sh-label">Occ</dt>
+                  <dd className="tabular-nums sh-heading">
+                    {row.occupancy != null ? formatLevelPercent(row.occupancy) : "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="sh-label">ADR</dt>
+                  <dd className="tabular-nums sh-heading">
+                    {row.adr != null ? formatCurrency(row.adr) : "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="sh-label">RevPAR</dt>
+                  <dd className="tabular-nums sh-heading">
+                    {row.revpar != null ? formatCurrency(row.revpar) : "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="sh-label">vs Budget</dt>
+                  <dd
+                    className={`font-semibold tabular-nums ${
+                      (row.variance_vs_budget ?? 0) >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
+                    {fmtVariance(row.variance_vs_budget)}
+                  </dd>
+                </div>
+              </dl>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="hidden max-h-[420px] overflow-auto sm:block">
         <table className="min-w-full text-xs">
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/95 dark:border-slate-700 dark:bg-slate-900/95">
             <tr>
