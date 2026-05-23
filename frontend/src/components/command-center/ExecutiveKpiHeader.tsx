@@ -25,7 +25,7 @@ type Props = {
 };
 
 function sortForMobile(kpis: ExecutiveKpiCard[]): ExecutiveKpiCard[] {
-  const order = new Map(MOBILE_KPI_ORDER.map((id, i) => [id, i]));
+  const order = new Map<string, number>(MOBILE_KPI_ORDER.map((id, i) => [id, i]));
   return [...kpis].sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
 }
 
