@@ -92,8 +92,8 @@ export function CommandCenterView() {
 
   return (
     <div className="space-y-5 pb-12">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-slate-50/50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/50">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 overflow-visible rounded-lg border border-slate-200/80 bg-slate-50/50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/50">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
           <span className="sh-label text-[10px]">Timeline</span>
           <TimelineControl
             value={period}

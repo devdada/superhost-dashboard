@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { MobilePopover } from "@/components/ui/MobilePopover";
+
 export type PropertyFilterState =
   | { mode: "all" }
   | { mode: "subset"; enabled: Set<string> };
@@ -85,7 +87,7 @@ export function PropertyFilter({ properties, value, onChange, disabled }: Props)
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className="flex min-w-[10rem] max-w-[14rem] items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-left text-xs font-medium sh-heading dark:border-slate-600 dark:bg-slate-900 disabled:opacity-50"
+        className="flex w-full min-w-0 max-w-[14rem] items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-left text-xs font-medium sh-heading dark:border-slate-600 dark:bg-slate-900 disabled:opacity-50 sm:min-w-[10rem]"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
@@ -95,11 +97,12 @@ export function PropertyFilter({ properties, value, onChange, disabled }: Props)
         </span>
       </button>
 
-      {open && (
-        <div
-          className="absolute left-0 z-50 mt-1 max-h-72 w-80 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
-          role="listbox"
-        >
+      <MobilePopover
+        open={open}
+        onClose={() => setOpen(false)}
+        desktopPanelClassName="absolute left-0 z-50 mt-1 max-h-72 w-80 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+      >
+        <div role="listbox">
           <label className="flex cursor-pointer items-center gap-2 border-b border-slate-100 px-3 py-2 text-xs font-semibold sh-heading hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/80">
             <input
               type="checkbox"
@@ -124,7 +127,7 @@ export function PropertyFilter({ properties, value, onChange, disabled }: Props)
             </label>
           ))}
         </div>
-      )}
+      </MobilePopover>
     </div>
   );
 }

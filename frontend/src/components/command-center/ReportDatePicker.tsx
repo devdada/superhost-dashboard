@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { MobilePopover } from "@/components/ui/MobilePopover";
+
 export type CustomDateRange = {
   start: string | null;
   end: string | null;
@@ -184,7 +186,7 @@ function ReportCalendar({
   };
 
   return (
-    <div className="w-[18.5rem]">
+    <div className="w-full max-w-[18.5rem]">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button
@@ -334,7 +336,7 @@ export function ReportDatePicker({
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800";
 
   return (
-    <div ref={rootRef} className="flex items-center gap-1">
+    <div ref={rootRef} className="flex min-w-0 max-w-full items-center gap-1">
       <button
         type="button"
         disabled={disabled || !canStepBack}
@@ -348,7 +350,7 @@ export function ReportDatePicker({
         </svg>
       </button>
 
-      <div className="relative">
+      <div className="relative min-w-0 flex-1 sm:flex-none">
         <button
           type="button"
           disabled={disabled}
@@ -375,24 +377,26 @@ export function ReportDatePicker({
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <span className="max-w-[11rem] truncate">{label}</span>
+          <span className="min-w-0 flex-1 truncate sm:max-w-[11rem]">{label}</span>
         </button>
 
-        {open && (
-          <div className="absolute left-0 z-50 mt-1 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-            <ReportCalendar
-              value={value}
-              rangeMode={rangeMode}
-              onRangeModeChange={setRangeMode}
-              availableSet={availableSet}
-              bounds={bounds}
-              sorted={sorted}
-              onChange={onChange}
-              onClear={onClear}
-              onClose={() => setOpen(false)}
-            />
-          </div>
-        )}
+        <MobilePopover
+          open={open}
+          onClose={() => setOpen(false)}
+          desktopPanelClassName="absolute left-0 z-50 mt-1 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        >
+          <ReportCalendar
+            value={value}
+            rangeMode={rangeMode}
+            onRangeModeChange={setRangeMode}
+            availableSet={availableSet}
+            bounds={bounds}
+            sorted={sorted}
+            onChange={onChange}
+            onClear={onClear}
+            onClose={() => setOpen(false)}
+          />
+        </MobilePopover>
       </div>
 
       <button
