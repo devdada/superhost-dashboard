@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from statistics import mean
 from types import SimpleNamespace
 
@@ -174,6 +174,59 @@ def _prior_chain_report(
             return reports[idx - 1]
         return baseline
     return get_report_before_date(session, comparison_prior.report_date)
+
+
+def _prior_period_range(range_start: date, range_end: date) -> tuple[date, date]:
+    """Immediately preceding window of the same length (e.g. prior 7D before this 7D)."""
+    span_days = (range_end - range_start).days + 1
+    prior_end = range_start - timedelta(days=1)
+    prior_start = prior_end - timedelta(days=span_days - 1)
+    return prior_start, prior_end
+
+
+def _incremental_portfolio_for_window(
+    session: Session,
+    *,
+    range_start: date,
+    range_end: date,
+    reference: date | None,
+    active_properties: frozenset[str] | None,
+    metric: str,
+) -> float | None:
+    window_reports = _filter_reports_by_hotels(
+        list_reports_in_period(
+            session,
+            "custom",
+            reference=reference,
+            range_start=range_start,
+            range_end=range_end,
+        ),
+        active_properties,
+    )
+    if not window_reports:
+        return None
+    window_latest = window_reports[-1]
+    window_baseline_raw = get_baseline_report_for_range(
+        session,
+        range_start=range_start,
+        period_end=window_latest.report_date,
+    )
+    window_baseline = (
+        _filter_reports_by_hotels([window_baseline_raw], active_properties)[0]
+        if window_baseline_raw and active_properties
+        else window_baseline_raw
+    )
+    return _incremental_portfolio_total(window_reports, window_baseline, metric)
+
+
+def _comparison_period_label(span_days: int) -> str:
+    if span_days == 7:
+        return "vs prior 7 days"
+    if span_days == 30:
+        return "vs prior 30 days"
+    if span_days == 1:
+        return "vs prior day"
+    return f"vs prior {span_days}-day period"
 
 
 def _delta_of_daily_increments(
@@ -633,7 +686,8 @@ def build_command_center(
             period_rev_var_delta = last_snapshot_var - prior_var
 
     rev_delta_vs_prior = None
-    if latest and comparison_prior:
+    comparison_label = ""
+    if single_day_view and latest and comparison_prior:
         rev_delta_vs_prior = _delta_of_daily_increments(
             session,
             latest=latest,
@@ -642,6 +696,21 @@ def build_command_center(
             baseline=baseline,
             metric="Revenue",
         )
+        comparison_label = "vs prior report day"
+    elif range_start and range_end and latest:
+        span_days = (range_end - range_start).days + 1
+        prior_start, prior_end = _prior_period_range(range_start, range_end)
+        prior_rev = _incremental_portfolio_for_window(
+            session,
+            range_start=prior_start,
+            range_end=prior_end,
+            reference=reference,
+            active_properties=active_properties,
+            metric="Revenue",
+        )
+        if prior_rev is not None:
+            rev_delta_vs_prior = rev_f - prior_rev
+        comparison_label = _comparison_period_label(span_days)
 
     occ_delta = None
     if occ_level is not None and latest and comparison_prior and "Occupancy" in stored:
@@ -649,12 +718,6 @@ def build_command_center(
         last_occ = _hotel_mean(latest, "Occupancy")
         if prior_occ is not None and last_occ is not None:
             occ_delta = last_occ - prior_occ
-
-    comparison_label = (
-        "vs prior report day"
-        if len(reports) == 1 and comparison_prior
-        else "vs prior calendar day in range"
-    )
 
     at_risk = sum(1 for r in heatmap if r.status in ("critical", "watch"))
     show_forecast_accuracy = forecast_accuracy_is_meaningful(

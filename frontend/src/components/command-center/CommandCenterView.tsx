@@ -189,8 +189,8 @@ export function CommandCenterView() {
               isLoading={refreshing}
             />
           )}
-          <ActionIntelligence alerts={data.action_alerts} />
           <PortfolioHeatmap rows={data.heatmap} />
+          <ActionIntelligence alerts={data.action_alerts} />
           <TrendVisualization
             revenueTrend={data.revenue_trend}
             revparTrend={data.revpar_trend}
