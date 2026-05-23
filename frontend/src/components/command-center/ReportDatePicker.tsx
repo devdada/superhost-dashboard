@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { MobilePopover } from "@/components/ui/MobilePopover";
+import { isInsideMobilePopoverPanel, MobilePopover } from "@/components/ui/MobilePopover";
 
 export type CustomDateRange = {
   start: string | null;
@@ -308,9 +308,10 @@ export function ReportDatePicker({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (isInsideMobilePopoverPanel(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);

@@ -3,6 +3,28 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState, type ReactNode } from "react";
 
+const MOBILE_PANEL_SELECTOR = "[data-mobile-popover-panel]";
+
+export function isInsideMobilePopoverPanel(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest(MOBILE_PANEL_SELECTOR));
+}
+
+function useIsMobileViewport(): boolean {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 639px)").matches : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  return isMobile;
+}
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -17,6 +39,7 @@ type Props = {
  */
 export function MobilePopover({ open, onClose, children, desktopPanelClassName }: Props) {
   const [mounted, setMounted] = useState(false);
+  const isMobile = useIsMobileViewport();
 
   useEffect(() => {
     setMounted(true);
@@ -44,9 +67,11 @@ export function MobilePopover({ open, onClose, children, desktopPanelClassName }
           aria-label="Close"
         />
         <div
+          data-mobile-popover-panel
           className="fixed left-3 right-3 top-[max(4.5rem,12vh)] z-[201] max-h-[min(75vh,32rem)] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:hidden"
           role="dialog"
           aria-modal="true"
+          onPointerDown={(e) => e.stopPropagation()}
         >
           {children}
         </div>
@@ -54,10 +79,9 @@ export function MobilePopover({ open, onClose, children, desktopPanelClassName }
       document.body,
     );
 
-  return (
-    <>
-      {mobileSheet}
-      <div className={`${desktopPanelClassName} hidden sm:block`}>{children}</div>
-    </>
-  );
+  if (isMobile) {
+    return mounted ? mobileSheet : null;
+  }
+
+  return <div className={desktopPanelClassName}>{children}</div>;
 }

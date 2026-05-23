@@ -121,17 +121,21 @@ export function CommandCenterView() {
             onChange={setPropertyFilter}
             disabled={refreshing || propertiesForUi.length === 0}
           />
-          {data?.latest_report_date && periodLabel && (
-            <span className="text-[11px] sh-subtext">
-              <strong className="sh-heading">{data.reports_in_period}</strong> reports through{" "}
-              <strong className="sh-heading">{data.latest_report_date}</strong>
-              <span className="mx-1 text-slate-400">·</span>
-              {periodLabel}
+          {data && periodLabel && (
+            <span className="flex w-full min-w-0 basis-full flex-col gap-0.5 text-[11px] sh-subtext sm:w-auto sm:basis-auto sm:flex-row sm:items-center sm:gap-1">
+              <span className="sh-heading">
+                <strong>{data.reports_in_period}</strong> report
+                {data.reports_in_period === 1 ? "" : "s"}
+              </span>
+              <span className="hidden text-slate-400 sm:inline">·</span>
+              <span>{periodLabel}</span>
               {subsetActive && (
                 <>
-                  <span className="mx-1 text-slate-400">·</span>
-                  {data.selected_properties.length}{" "}
-                  {data.selected_properties.length === 1 ? "property" : "properties"}
+                  <span className="hidden text-slate-400 sm:inline">·</span>
+                  <span>
+                    {data.selected_properties.length}{" "}
+                    {data.selected_properties.length === 1 ? "property" : "properties"}
+                  </span>
                 </>
               )}
             </span>
