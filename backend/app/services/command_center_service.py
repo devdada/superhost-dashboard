@@ -98,6 +98,16 @@ def _filter_reports_by_hotels(reports: list, hotels: frozenset[str] | None) -> l
     return filtered
 
 
+def _filter_report_by_hotels(report, hotels: frozenset[str] | None):
+    """Single-report variant of `_filter_reports_by_hotels`."""
+    if report is None:
+        return None
+    if hotels is None:
+        return report
+    filtered = _filter_reports_by_hotels([report], hotels)
+    return filtered[0] if filtered else None
+
+
 def _metrics_map(report) -> dict[str, list]:
     by_hotel: dict[str, dict[str, object]] = defaultdict(dict)
     for m in report.metrics:
@@ -248,6 +258,7 @@ def _prior_chain_report(
     reports: list,
     baseline,
     comparison_prior,
+    active_properties: frozenset[str] | None = None,
 ):
     """Report whose PTD anchors the prior day's daily increment."""
     if len(reports) >= 2 and comparison_prior.report_date == reports[-2].report_date:
@@ -255,7 +266,10 @@ def _prior_chain_report(
         if idx > 0:
             return reports[idx - 1]
         return baseline
-    return get_report_before_date(session, comparison_prior.report_date)
+    return _filter_report_by_hotels(
+        get_report_before_date(session, comparison_prior.report_date),
+        active_properties,
+    )
 
 
 def _prior_period_range(range_start: date, range_end: date) -> tuple[date, date]:
@@ -319,12 +333,15 @@ def _delta_of_daily_increments(
     reports: list,
     baseline,
     metric: str,
+    active_properties: frozenset[str] | None = None,
 ) -> float | None:
-    """Change in one day's actual vs the previous report day's actual (not raw daily PTD delta)."""
+    """Selected day's revenue minus the prior report day's revenue (same property scope)."""
     last_inc = _daily_portfolio_increment(latest, comparison_prior, metric)
     if last_inc is None:
         return None
-    prior_chain = _prior_chain_report(session, reports, baseline, comparison_prior)
+    prior_chain = _prior_chain_report(
+        session, reports, baseline, comparison_prior, active_properties
+    )
     prior_inc = _daily_portfolio_increment(comparison_prior, prior_chain, metric)
     if prior_inc is None:
         return None
@@ -674,12 +691,15 @@ def build_command_center(
     stored = list_distinct_metrics(session)
 
     latest = reports[-1] if reports else None
-    prior = reports[-2] if len(reports) >= 2 else None
-    comparison_prior = (
-        prior
-        if len(reports) >= 2
-        else (get_report_before_date(session, latest.report_date) if latest else None)
-    )
+    if len(reports) >= 2:
+        comparison_prior = reports[-2]
+    elif latest:
+        comparison_prior = _filter_report_by_hotels(
+            get_report_before_date(session, latest.report_date),
+            active_properties,
+        )
+    else:
+        comparison_prior = None
     baseline_raw = (
         get_baseline_report_for_range(
             session,
@@ -689,11 +709,7 @@ def build_command_center(
         if latest and range_start
         else None
     )
-    baseline = (
-        _filter_reports_by_hotels([baseline_raw], properties)[0]
-        if baseline_raw and active_properties
-        else baseline_raw
-    )
+    baseline = _filter_report_by_hotels(baseline_raw, active_properties)
 
     empty = CommandCenterResponse(
         period=period_name,
@@ -760,6 +776,9 @@ def build_command_center(
     rev_delta_vs_prior = None
     comparison_label = ""
     if single_day_view and latest and comparison_prior:
+        daily_rev = _daily_portfolio_increment(latest, comparison_prior, "Revenue")
+        if daily_rev is not None:
+            rev_f = daily_rev
         rev_delta_vs_prior = _delta_of_daily_increments(
             session,
             latest=latest,
@@ -767,8 +786,9 @@ def build_command_center(
             reports=reports,
             baseline=baseline,
             metric="Revenue",
+            active_properties=active_properties,
         )
-        comparison_label = "vs prior report day"
+        comparison_label = "vs prior day"
     elif range_start and range_end and latest:
         span_days = (range_end - range_start).days + 1
         prior_start, prior_end = _prior_period_range(range_start, range_end)
@@ -1040,7 +1060,7 @@ def build_command_center(
         range_end=range_end,
         reports_in_period=len(reports),
         latest_report_date=latest.report_date,
-        prior_report_date=prior.report_date if prior else None,
+        prior_report_date=comparison_prior.report_date if comparison_prior else None,
         available_properties=available_properties,
         selected_properties=selected_list,
         available_report_dates=report_dates,
