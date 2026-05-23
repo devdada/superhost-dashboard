@@ -66,8 +66,14 @@ def on_startup() -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, str | int]:
+    from sqlalchemy import func, select
+
+    from app.database import Report, SessionLocal
+
+    with SessionLocal() as session:
+        report_count = session.scalar(select(func.count()).select_from(Report)) or 0
+    return {"status": "ok", "reports": report_count}
 
 
 def _parse_property_filter(properties: list[str]) -> frozenset[str] | None:

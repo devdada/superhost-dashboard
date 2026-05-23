@@ -48,7 +48,7 @@ Keep using `frontend/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8001
 
 | Setting | Value |
 |--------|--------|
-| Mount Path | `/opt/render/project/src/data` |
+| Mount Path | `/opt/render/project/src/backend/data` |
 | Size | 1 GB |
 
 ### 2. Frontend (`superhost-web`)
@@ -87,7 +87,7 @@ Your local file: `backend/data/superhost.db`
 **Option 1 — Render Shell (after API is live)**
 
 1. API service → **Shell**.
-2. Confirm disk is mounted: `ls -la /opt/render/project/src/data`
+2. Confirm disk is mounted: `ls -la /opt/render/project/src/backend/data`
 3. From your Mac, base64-encode and paste, or use `scp` if you have SSH access (Render shell is easiest with a one-liner upload):
 
 ```bash
@@ -98,7 +98,7 @@ base64 < backend/data/superhost.db | pbcopy
 On Render shell:
 
 ```bash
-cd /opt/render/project/src/data
+cd /opt/render/project/src/backend/data
 # paste base64 into a file, then:
 base64 -d superhost.b64 > superhost.db
 ```
@@ -126,7 +126,7 @@ Skip migration; upload PDFs again through the dashboard.
 |-------|-----|
 | Frontend can’t reach API | Check `NEXT_PUBLIC_API_URL`, redeploy frontend |
 | CORS error in browser | Set `CORS_ORIGINS` to exact frontend URL (https, no trailing slash) |
-| Data gone after deploy | Enable disk on API; mount path must be `/opt/render/project/src/data` |
+| Data gone after deploy | Enable disk on API; mount path must be `/opt/render/project/src/backend/data` |
 | Upload fails | Check API logs; PDF parser errors show in Render **Logs** |
 
 ## Custom domains

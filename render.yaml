@@ -25,7 +25,8 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
     disk:
       name: superhost-data
-      mountPath: /opt/render/project/src/data
+      # Must match app DATA_DIR (backend/data), not repo-root /data
+      mountPath: /opt/render/project/src/backend/data
       sizeGB: 1
 
   - type: web
