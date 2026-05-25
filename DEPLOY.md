@@ -43,6 +43,11 @@ Keep using `frontend/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8001
 |-----|--------|
 | `PYTHON_VERSION` | `3.12.0` |
 | `CORS_ORIGINS` | `https://YOUR-FRONTEND.onrender.com` (set after frontend exists) |
+| `AUTH_ADMIN_EMAIL` | Seeded admin email for app login |
+| `AUTH_ADMIN_PASSWORD` | Seeded admin password |
+| `AUTH_SESSION_SECRET` | Long random secret used to sign sessions |
+| `AUTH_SESSION_SAME_SITE` | `lax` by default; set `none` only if your deployment needs it |
+| `AUTH_SESSION_HTTPS_ONLY` | `true` in production when using `AUTH_SESSION_SAME_SITE=none` |
 
 **Disk** (Starter+)
 

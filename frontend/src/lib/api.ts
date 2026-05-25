@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/auth";
+
 export type FlashMetricRow = {
   hotel: string;
   metric: string;
@@ -13,8 +15,6 @@ export type UploadResponse = {
   metric: string;
   rows: FlashMetricRow[];
 };
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type SkippedDuplicate = {
   filename: string;
@@ -67,7 +67,7 @@ export async function uploadDailyFlashBatch(
   }
 
   const replace = options?.replaceExisting ? "true" : "false";
-  const response = await fetch(`${API_BASE}/upload/batch?replace_existing=${replace}`, {
+  const response = await apiFetch(`/upload/batch?replace_existing=${replace}`, {
     method: "POST",
     body: formData,
   });

@@ -1,11 +1,25 @@
 import os
 
-from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.auth import (
+    admin_user,
+    auth_session_https_only,
+    auth_session_max_age,
+    auth_session_same_site,
+    auth_session_secret,
+    authenticate_admin,
+    current_admin,
+    login_admin,
+    logout_admin,
+    validate_auth_config,
+)
 from app.database import SessionLocal, init_db
 from app.models import UploadResponse
+from app.schemas.auth import AuthUserResponse, LoginRequest
 from app.schemas.command_center import CommandCenterResponse
 from app.schemas.portfolio import PortfolioOperationalResponse
 from app.schemas.reports import ReportInventoryResponse
@@ -58,10 +72,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=auth_session_secret(),
+    same_site=auth_session_same_site(),
+    https_only=auth_session_https_only(),
+    max_age=auth_session_max_age(),
+)
 
 
 @app.on_event("startup")
 def on_startup() -> None:
+    validate_auth_config()
     init_db()
 
 
@@ -86,8 +108,29 @@ def _parse_property_filter(properties: list[str]) -> frozenset[str] | None:
     return frozenset(names) if names else None
 
 
+@app.post("/auth/login", response_model=AuthUserResponse)
+def auth_login(payload: LoginRequest, request: Request) -> AuthUserResponse:
+    if not authenticate_admin(payload):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    user = admin_user()
+    login_admin(request, user)
+    return user
+
+
+@app.get("/auth/me", response_model=AuthUserResponse)
+def auth_me(user: AuthUserResponse = Depends(current_admin)) -> AuthUserResponse:
+    return user
+
+
+@app.post("/auth/logout")
+def auth_logout(request: Request) -> dict[str, bool]:
+    logout_admin(request)
+    return {"ok": True}
+
+
 @app.get("/dashboard/command-center", response_model=CommandCenterResponse)
 def get_command_center(
+    _user: AuthUserResponse = Depends(current_admin),
     period: str = Query(default=DEFAULT_PERIOD),
     start_date: str | None = Query(
         default=None,
@@ -114,6 +157,7 @@ def get_command_center(
 
 @app.get("/portfolio/operational", response_model=PortfolioOperationalResponse)
 def get_portfolio_operational(
+    _user: AuthUserResponse = Depends(current_admin),
     metric: str = Query(default=DEFAULT_METRIC, description="KPI metric to analyze"),
     period: str = Query(
         default=DEFAULT_PERIOD,
@@ -126,6 +170,7 @@ def get_portfolio_operational(
 
 @app.get("/trends", response_model=HistoricalTrendsResponse)
 def get_trends(
+    _user: AuthUserResponse = Depends(current_admin),
     metric: str = Query(default=DEFAULT_METRIC),
     period: str = Query(default=DEFAULT_PERIOD),
 ) -> HistoricalTrendsResponse:
@@ -134,7 +179,7 @@ def get_trends(
 
 
 @app.get("/filters/options")
-def get_filter_options() -> dict:
+def get_filter_options(_user: AuthUserResponse = Depends(current_admin)) -> dict:
     from app.repositories.report_repository import list_distinct_metrics
 
     from app.repositories.report_repository import list_distinct_hotel_names
@@ -161,13 +206,18 @@ def get_filter_options() -> dict:
 
 
 @app.get("/executive-intelligence", response_model=ExecutiveIntelligenceResponse)
-def get_executive_intelligence() -> ExecutiveIntelligenceResponse:
+def get_executive_intelligence(
+    _user: AuthUserResponse = Depends(current_admin),
+) -> ExecutiveIntelligenceResponse:
     with SessionLocal() as session:
         return build_executive_intelligence(session)
 
 
 @app.get("/properties/{hotel_name:path}", response_model=PropertyIntelligenceResponse)
-def get_property_intelligence(hotel_name: str) -> PropertyIntelligenceResponse:
+def get_property_intelligence(
+    hotel_name: str,
+    _user: AuthUserResponse = Depends(current_admin),
+) -> PropertyIntelligenceResponse:
     with SessionLocal() as session:
         try:
             return build_property_intelligence(session, hotel_name)
@@ -176,7 +226,10 @@ def get_property_intelligence(hotel_name: str) -> PropertyIntelligenceResponse:
 
 
 @app.post("/upload", response_model=UploadResponse)
-async def upload_pdf(file: UploadFile = File(...)) -> UploadResponse:
+async def upload_pdf(
+    _user: AuthUserResponse = Depends(current_admin),
+    file: UploadFile = File(...),
+) -> UploadResponse:
     with SessionLocal() as session:
         try:
             outcome = await process_upload_file(session, file, seen_dates=set())
@@ -206,6 +259,7 @@ async def upload_pdf(file: UploadFile = File(...)) -> UploadResponse:
 
 @app.post("/upload/batch", response_model=BatchUploadResponse)
 async def upload_pdf_batch(
+    _user: AuthUserResponse = Depends(current_admin),
     files: list[UploadFile] = File(...),
     replace_existing: bool = Query(
         False,
@@ -220,7 +274,7 @@ async def upload_pdf_batch(
 
 
 @app.get("/reports/inventory", response_model=ReportInventoryResponse)
-def get_reports_inventory() -> ReportInventoryResponse:
+def get_reports_inventory(_user: AuthUserResponse = Depends(current_admin)) -> ReportInventoryResponse:
     with SessionLocal() as session:
         return build_reports_inventory(session)
 
@@ -263,18 +317,15 @@ async def inbound_email(request: Request) -> InboundEmailResponse:
 
 
 @app.get("/dashboard/revision")
-def dashboard_revision() -> dict:
+def dashboard_revision(_user: AuthUserResponse = Depends(current_admin)) -> dict:
     with SessionLocal() as session:
         return {"revision": get_dashboard_revision(session)}
 
 
 @app.get("/admin/ingestion", response_model=AdminIngestionResponse)
 def admin_ingestion(
-    x_admin_key: str | None = Header(default=None, alias="X-Admin-Key"),
+    _user: AuthUserResponse = Depends(current_admin),
 ) -> AdminIngestionResponse:
-    expected = os.getenv("ADMIN_API_KEY", "").strip()
-    if expected and x_admin_key != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     with SessionLocal() as session:
         return build_admin_ingestion(session)
 
@@ -282,11 +333,8 @@ def admin_ingestion(
 @app.post("/admin/ingestion/{report_id}/reprocess")
 def admin_reprocess_report(
     report_id: int,
-    x_admin_key: str | None = Header(default=None, alias="X-Admin-Key"),
+    _user: AuthUserResponse = Depends(current_admin),
 ) -> dict:
-    expected = os.getenv("ADMIN_API_KEY", "").strip()
-    if expected and x_admin_key != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     with SessionLocal() as session:
         try:
             item = reprocess_report(session, report_id)
@@ -298,11 +346,8 @@ def admin_reprocess_report(
 @app.get("/admin/ingestion/{report_id}/pdf")
 def admin_view_pdf(
     report_id: int,
-    x_admin_key: str | None = Header(default=None, alias="X-Admin-Key"),
+    _user: AuthUserResponse = Depends(current_admin),
 ):
-    expected = os.getenv("ADMIN_API_KEY", "").strip()
-    if expected and x_admin_key != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     from app.database import Report
 
     with SessionLocal() as session:
@@ -316,7 +361,10 @@ def admin_view_pdf(
 
 
 @app.get("/reports/{report_id}")
-def get_report(report_id: int) -> dict:
+def get_report(
+    report_id: int,
+    _user: AuthUserResponse = Depends(current_admin),
+) -> dict:
     from app.database import Report
 
     with SessionLocal() as session:

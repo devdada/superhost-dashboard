@@ -1,6 +1,5 @@
 import type { DashboardPeriod } from "@/lib/dashboard-filters";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiFetch } from "@/lib/auth";
 
 export type KpiSparklinePoint = { report_date: string; value: number };
 
@@ -120,7 +119,7 @@ export async function fetchCommandCenter(
       params.append("properties", name);
     }
   }
-  const response = await fetch(`${API_BASE}/dashboard/command-center?${params}`, {
+  const response = await apiFetch(`/dashboard/command-center?${params}`, {
     cache: "no-store",
   });
   if (!response.ok) {

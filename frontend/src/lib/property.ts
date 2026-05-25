@@ -1,6 +1,5 @@
 import type { ExecutiveRecommendation } from "@/lib/executive";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiFetch } from "@/lib/auth";
 
 export type TrendPoint = {
   report_date: string;
@@ -70,10 +69,7 @@ export function propertyPath(hotelName: string): string {
 export async function fetchPropertyIntelligence(
   hotelSlug: string,
 ): Promise<PropertyIntelligence> {
-  const response = await fetch(
-    `${API_BASE}/properties/${hotelSlug}`,
-    { cache: "no-store" },
-  );
+  const response = await apiFetch(`/properties/${hotelSlug}`, { cache: "no-store" });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const detail = body.detail ?? `Property not found (${response.status})`;

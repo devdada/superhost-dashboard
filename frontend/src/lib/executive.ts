@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiFetch, apiUrl } from "@/lib/auth";
 
 export type OperationalCategory = "Revenue" | "Occupancy" | "ADR" | "RevPAR";
 export type PriorityLevel = "critical" | "high" | "medium" | "low";
@@ -50,7 +50,7 @@ export async function fetchExecutiveIntelligence(): Promise<ExecutiveIntelligenc
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const response = await fetch(`${API_BASE}/executive-intelligence`, {
+    const response = await apiFetch("/executive-intelligence", {
       cache: "no-store",
       signal: controller.signal,
     });
@@ -60,7 +60,7 @@ export async function fetchExecutiveIntelligence(): Promise<ExecutiveIntelligenc
     return response.json();
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Cannot reach API at ${API_BASE}`);
+      throw new Error(`Cannot reach API at ${apiUrl("")}`);
     }
     throw err;
   } finally {

@@ -1,8 +1,7 @@
 import type { DashboardFilters } from "@/lib/dashboard-filters";
 import { buildFilterQuery } from "@/lib/dashboard-filters";
+import { apiFetch } from "@/lib/auth";
 import type { FlashMetricRow } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type PortfolioOperational = {
   total_reports: number;
@@ -21,7 +20,7 @@ export async function fetchPortfolioOperational(
   filters: DashboardFilters,
 ): Promise<PortfolioOperational> {
   const qs = buildFilterQuery(filters);
-  const response = await fetch(`${API_BASE}/portfolio/operational?${qs}`, {
+  const response = await apiFetch(`/portfolio/operational?${qs}`, {
     cache: "no-store",
   });
   if (!response.ok) {

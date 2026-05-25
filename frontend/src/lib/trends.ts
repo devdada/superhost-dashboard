@@ -1,7 +1,6 @@
 import type { DashboardFilters } from "@/lib/dashboard-filters";
+import { apiFetch, apiUrl } from "@/lib/auth";
 import { buildFilterQuery } from "@/lib/dashboard-filters";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type PortfolioVariancePoint = {
   report_id: number;
@@ -64,7 +63,7 @@ export async function fetchHistoricalTrends(
   const qs = buildFilterQuery(filters);
 
   try {
-    const response = await fetch(`${API_BASE}/trends?${qs}`, {
+    const response = await apiFetch(`/trends?${qs}`, {
       cache: "no-store",
       signal: controller.signal,
     });
@@ -75,7 +74,7 @@ export async function fetchHistoricalTrends(
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new Error(
-        `Cannot reach API at ${API_BASE}. Is the backend running on the same port as NEXT_PUBLIC_API_URL?`,
+        `Cannot reach API at ${apiUrl("")}. Is the backend running on the same port as NEXT_PUBLIC_API_URL?`,
       );
     }
     throw err;

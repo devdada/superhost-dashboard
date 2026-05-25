@@ -7,13 +7,12 @@ import { DataCoverageBanner } from "@/components/filters/DataCoverageBanner";
 import { PortfolioOperationalSection } from "@/components/insights/PortfolioOperationalSection";
 import { HistoricalTrendsSection } from "@/components/trends/HistoricalTrends";
 import { UploadPanel } from "@/components/UploadPanel";
+import { apiFetch } from "@/lib/auth";
 import {
   DEFAULT_METRIC,
   DEFAULT_PERIOD,
   type DashboardFilters,
 } from "@/lib/dashboard-filters";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export function CommandCenter() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -25,7 +24,7 @@ export function CommandCenter() {
 
   const loadStoredMetrics = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/filters/options`, { cache: "no-store" });
+      const response = await apiFetch("/filters/options", { cache: "no-store" });
       if (!response.ok) return;
       const data = await response.json();
       const stored: string[] = data.stored_metrics ?? [];

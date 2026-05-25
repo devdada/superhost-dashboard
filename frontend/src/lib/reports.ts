@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiFetch } from "@/lib/auth";
 
 export type ReportInventoryItem = {
   report_id: number;
@@ -20,7 +20,7 @@ export type ReportInventoryResponse = {
 };
 
 export async function fetchReportsInventory(): Promise<ReportInventoryResponse> {
-  const response = await fetch(`${API_BASE}/reports/inventory`, { cache: "no-store" });
+  const response = await apiFetch("/reports/inventory", { cache: "no-store" });
   if (!response.ok) {
     throw new Error("Failed to load reports inventory");
   }

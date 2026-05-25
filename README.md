@@ -41,8 +41,15 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+export AUTH_ADMIN_EMAIL=admin@example.com
+export AUTH_ADMIN_PASSWORD=change-me
+export AUTH_SESSION_SECRET=replace-with-a-long-random-string
 uvicorn app.main:app --reload --port 8000
 ```
+
+If you skip the auth vars in local dev, the app falls back to:
+- email: `admin@localhost`
+- password: `changeme`
 
 If port 8000 is already in use, pick another port (e.g. **8001**) and set the same value in `frontend/.env.local`:
 
@@ -56,6 +63,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8001
 ```
 
 Restart `npm run dev` after changing `.env.local`.
+Open [http://localhost:3000/login](http://localhost:3000/login) and sign in with the seeded admin credentials above.
 
 ### Frontend
 
@@ -77,6 +85,14 @@ Deploy **both** frontend and backend on [Render](https://render.com) with SQLite
 Executive operations UI at `/` — KPI header, Action Intelligence alerts, hotel heatmap, trend charts, top/worst performers. Upload PDFs at `/reports`.
 
 API: `GET /dashboard/command-center?period=7d|30d|mtd|ytd|all`
+
+### Authentication
+
+- Seeded admin login only for now
+- Backend env vars required: `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `AUTH_SESSION_SECRET`
+- Local dev falls back to `admin@localhost` / `changeme` if those env vars are omitted
+- Optional session tuning: `AUTH_SESSION_SAME_SITE`, `AUTH_SESSION_HTTPS_ONLY`, `AUTH_SESSION_MAX_AGE`
+- Frontend uses the backend session cookie; API requests must be made with credentials included
 
 ### Inbound email ingestion
 
@@ -114,6 +130,9 @@ Click any **hotel name** on the portfolio dashboard to open `/properties/[hotelN
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
+| POST | `/auth/login` | Start admin session |
+| GET | `/auth/me` | Read current session |
+| POST | `/auth/logout` | End current session |
 | POST | `/upload` | Parse one PDF (409 if report date already exists) |
 | POST | `/upload/batch` | Parse multiple PDFs; skip duplicate report dates |
 | GET | `/trends` | Historical trend intelligence payload |
@@ -130,6 +149,6 @@ Click any **hotel name** on the portfolio dashboard to open `/properties/[hotelN
 
 ## Notes
 
-- Local SQLite only — no cloud, auth, or OpenAI.
+- Local SQLite only — no cloud or OpenAI.
 - If you upgraded from an older schema, delete `backend/data/superhost.db` and re-upload.
 - Report date is parsed from the PDF header (e.g. `May 18, 2026`).
