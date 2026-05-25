@@ -23,6 +23,10 @@ def _is_local_dev() -> bool:
     return "localhost" in cors_origins or "127.0.0.1" in cors_origins
 
 
+def _is_remote_deploy() -> bool:
+    return not _is_local_dev()
+
+
 def _required_env(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value and _is_local_dev():
@@ -47,9 +51,10 @@ def auth_session_secret() -> str:
 
 
 def auth_session_same_site() -> str:
-    same_site = os.getenv("AUTH_SESSION_SAME_SITE", "lax").strip().lower() or "lax"
+    default = "none" if _is_remote_deploy() else "lax"
+    same_site = os.getenv("AUTH_SESSION_SAME_SITE", default).strip().lower() or default
     if same_site not in {"lax", "strict", "none"}:
-        return "lax"
+        return default
     return same_site
 
 
@@ -59,7 +64,7 @@ def auth_session_https_only() -> bool:
         return True
     if raw in {"0", "false", "no", "off"}:
         return False
-    return auth_session_same_site() == "none"
+    return _is_remote_deploy() or auth_session_same_site() == "none"
 
 
 def auth_session_max_age() -> int:

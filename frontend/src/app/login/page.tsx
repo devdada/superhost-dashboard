@@ -77,6 +77,12 @@ function LoginForm() {
             setError(null);
             try {
               await login(email, password);
+              const user = await fetchCurrentUser();
+              if (!user) {
+                throw new Error(
+                  "Login succeeded, but the session cookie was not accepted. Redeploy the API with the latest auth cookie settings and confirm CORS_ORIGINS matches your frontend URL exactly.",
+                );
+              }
               router.replace(next);
               router.refresh();
             } catch (err) {
