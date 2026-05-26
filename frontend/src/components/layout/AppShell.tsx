@@ -42,9 +42,6 @@ export function AppShell({ title, subtitle, children }: Props) {
               </nav>
             </div>
             <div className="flex items-center gap-3">
-              <span className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 md:inline">
-                Live intelligence
-              </span>
               <LogoutButton />
               <DarkModeToggle />
             </div>

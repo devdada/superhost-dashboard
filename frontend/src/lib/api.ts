@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/auth";
+import { apiUrl } from "@/lib/auth";
 
 export type FlashMetricRow = {
   hotel: string;
@@ -34,6 +34,11 @@ export type BatchUploadResponse = {
   total_submitted: number;
 };
 
+export type BatchUploadProgress = {
+  phase: "uploading" | "processing" | "complete";
+  percent: number;
+};
+
 function formatUploadError(detail: unknown): string {
   if (typeof detail === "string") return detail;
   if (detail && typeof detail === "object" && "message" in detail) {
@@ -59,7 +64,10 @@ export async function uploadDailyFlash(file: File): Promise<UploadResponse> {
 
 export async function uploadDailyFlashBatch(
   files: File[],
-  options?: { replaceExisting?: boolean },
+  options?: {
+    replaceExisting?: boolean;
+    onProgress?: (progress: BatchUploadProgress) => void;
+  },
 ): Promise<BatchUploadResponse> {
   const formData = new FormData();
   for (const file of files) {
@@ -67,28 +75,54 @@ export async function uploadDailyFlashBatch(
   }
 
   const replace = options?.replaceExisting ? "true" : "false";
-  const response = await apiFetch(`/upload/batch?replace_existing=${replace}`, {
-    method: "POST",
-    body: formData,
+  const onProgress = options?.onProgress;
+
+  return new Promise<BatchUploadResponse>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl(`/upload/batch?replace_existing=${replace}`));
+    xhr.withCredentials = true;
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      const percent = Math.max(5, Math.min(80, Math.round((event.loaded / event.total) * 80)));
+      onProgress?.({ phase: "uploading", percent });
+    };
+
+    xhr.upload.onload = () => {
+      onProgress?.({ phase: "processing", percent: 82 });
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Upload failed"));
+    };
+
+    xhr.onload = () => {
+      const responseText = xhr.responseText || "{}";
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        let detail: unknown = "Batch upload failed";
+        try {
+          const body = JSON.parse(responseText) as { detail?: unknown };
+          detail = body.detail ?? detail;
+        } catch {
+          /* ignore */
+        }
+        reject(new Error(formatUploadError(detail)));
+        return;
+      }
+
+      const data = JSON.parse(responseText) as BatchUploadResponse;
+      onProgress?.({ phase: "complete", percent: 100 });
+      resolve({
+        ...data,
+        imported: data.imported.map((item: UploadResponse) => ({
+          ...item,
+          report_id: item.report_id,
+        })),
+      });
+    };
+
+    onProgress?.({ phase: "uploading", percent: 0 });
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    let detail: unknown = "Batch upload failed";
-    try {
-      const body = await response.json();
-      detail = body.detail ?? detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(formatUploadError(detail));
-  }
-
-  const data = await response.json();
-  return {
-    ...data,
-    imported: data.imported.map((item: UploadResponse) => ({
-      ...item,
-      report_id: item.report_id,
-    })),
-  };
 }

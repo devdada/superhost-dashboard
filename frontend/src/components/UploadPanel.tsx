@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
+  type BatchUploadProgress,
   uploadDailyFlashBatch,
   type BatchUploadResponse,
   type UploadResponse,
@@ -29,17 +30,36 @@ export function UploadPanel({ onUploadSuccess }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<BatchUploadResponse | null>(null);
   const [latestResult, setLatestResult] = useState<UploadResponse | null>(null);
   const [replaceExisting, setReplaceExisting] = useState(false);
+  const [progress, setProgress] = useState<BatchUploadProgress | null>(null);
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     setSelectedFiles(files);
     setError(null);
+    setSuccessMessage(null);
     setBatchResult(null);
     setLatestResult(null);
   };
+
+  useEffect(() => {
+    if (!loading || progress?.phase !== "processing") return;
+
+    const timer = window.setInterval(() => {
+      setProgress((current) => {
+        if (!current || current.phase !== "processing") return current;
+        return {
+          ...current,
+          percent: Math.min(96, current.percent + 2),
+        };
+      });
+    }, 250);
+
+    return () => window.clearInterval(timer);
+  }, [loading, progress?.phase]);
 
   const onUpload = async () => {
     if (selectedFiles.length === 0) {
@@ -49,19 +69,28 @@ export function UploadPanel({ onUploadSuccess }: Props) {
 
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
+    setProgress({ phase: "uploading", percent: 0 });
 
     try {
       const response = await uploadDailyFlashBatch(selectedFiles, {
         replaceExisting,
+        onProgress: setProgress,
       });
       setBatchResult(response);
 
       if (response.imported.length > 0) {
         const latest = response.imported[response.imported.length - 1];
         setLatestResult(toUploadResponse(latest));
+        setSuccessMessage(
+          response.imported.length === 1
+            ? `Parsed 1 PDF successfully for ${latest.report_date}.`
+            : `Parsed ${response.imported.length} PDFs successfully.`,
+        );
         onUploadSuccess?.();
       } else {
         setLatestResult(null);
+        setSuccessMessage(null);
         if (response.skipped_duplicates.length > 0 && response.failed.length === 0) {
           setError("All files were skipped — those report dates already exist.");
         } else if (response.failed.length > 0 && response.imported.length === 0) {
@@ -76,8 +105,10 @@ export function UploadPanel({ onUploadSuccess }: Props) {
     } catch (err) {
       setBatchResult(null);
       setLatestResult(null);
+      setSuccessMessage(null);
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
+      setProgress((current) => (current ? { phase: "complete", percent: 100 } : null));
       setLoading(false);
     }
   };
@@ -132,12 +163,33 @@ export function UploadPanel({ onUploadSuccess }: Props) {
             className="shrink-0 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:bg-slate-700"
           >
             {loading
-              ? `Parsing ${selectedFiles.length || ""} PDF${selectedFiles.length === 1 ? "" : "s"}…`
+              ? progress?.phase === "processing"
+                ? `Parsing ${selectedFiles.length || ""} PDF${selectedFiles.length === 1 ? "" : "s"}…`
+                : `Uploading ${selectedFiles.length || ""} PDF${selectedFiles.length === 1 ? "" : "s"}…`
               : `Upload & Parse${selectedFiles.length > 1 ? ` (${selectedFiles.length})` : ""}`}
           </button>
         </div>
 
-        {fileLabel && !loading && (
+        {loading && progress && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs sh-label">
+              <span>
+                {progress.phase === "processing"
+                  ? "Files uploaded. Parsing reports..."
+                  : "Uploading files..."}
+              </span>
+              <span>{progress.percent}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div
+                className="h-full rounded-full bg-indigo-600 transition-[width] duration-300 ease-out"
+                style={{ width: `${progress.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {fileLabel && (
           <ul className="mt-3 space-y-1 text-xs sh-label">
             <li>{fileLabel}</li>
             {selectedFiles.length > 1 &&
@@ -147,6 +199,12 @@ export function UploadPanel({ onUploadSuccess }: Props) {
                 </li>
               ))}
           </ul>
+        )}
+
+        {successMessage && (
+          <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
+            {successMessage}
+          </p>
         )}
 
         {error && (
